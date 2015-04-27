@@ -1,0 +1,133 @@
+---
+title: "Coursera Course - Reproducible Research - Storm Data Analysis"
+author: "Teddy Rusli"
+date: "Thursday, April 26, 2015"
+output: html_document
+---
+# Synopsis
+
+This project involves exploring the U.S. National Oceanic and Atmospheric Administration's (NOAA) storm database. This database tracks characteristics of major storms and weather events in the United States, including when and where they occur, as well as estimates of any fatalities, injuries, and property damage.
+
+This analysis finds that Tornado is the most harmful severe weather in affecting population health. Excessive Heat is second when it comes to fatalities.  TSTM wind is second when it comes to injuries. 
+
+With regards to property damage, Tornado is again the most harmful. Hail is, however, the most damaging to crops.
+
+### Data Processing
+
+```{r, echo=FALSE}
+library(ggplot2)
+library(plyr)
+library(R.utils)
+library(gridExtra)
+```
+
+There is  some documentation of the database available. Here you will find how some of the variables are constructed/defined.
+- National Weather Service [Storm Data Documentation](https://d396qusza40orc.cloudfront.net/repdata%2Fpeer2_doc%2Fpd01016005curr.pdf)
+- National Climatic Data Center Storm Events [FAQ](https://d396qusza40orc.cloudfront.net/repdata%2Fpeer2_doc%2FNCDC%20Storm%20Events-FAQ%20Page.pdf)
+The events in the database start in the year 1950 and end in November 2011. In the earlier years of the database there are generally fewer events recorded, most likely due to a lack of good records. More recent years should be considered more complete.
+
+Step 1: Download and uncompress bzip2 data file
+
+```{r}
+echo = TRUE  # Show R code
+setwd("~/GitHub/RepData_PeerAssessment2")
+setInternet2(TRUE)
+download.file("https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2",
+              destfile = "stormData.csv.bz2")
+bunzip2("stormData.csv.bz2", overwrite=T, remove=F)
+```
+
+Step 2: Describe the data set
+
+```{r,}
+stormDF<- read.csv("stormData.csv")
+str(stormDF)
+head(stormDF)
+dim(stormDF)
+```
+
+The data set contain 90,227 rows and 37 columns. The date range from 1950 to November, 2011. 
+
+Step 3: Across the United States, which types of events (as indicated in the EVTYPE variable) are most harmful with respect to population health?
+
+```{r,}
+fatalities <- aggregate(stormDF[, 'FATALITIES'],FUN = sum,by = list(stormDF$EVTYPE))
+names(fatalities)[1]<-paste("Fatalities")
+names(fatalities)[2]<-paste("Frequency")
+fatalitiesTop <- subset(fatalities, Frequency > 0)
+fatalitiesTop <- arrange(fatalitiesTop, fatalitiesTop[,2], decreasing = T)
+
+injuries <- aggregate(stormDF[, 'INJURIES'],FUN = sum,by = list(stormDF$EVTYPE))
+names(injuries)[1]<-paste("Injuries")
+names(injuries)[2]<-paste("Frequency")
+injuriesTop <- subset(injuries, Frequency > 0)
+injuriesTop <- arrange(injuriesTop, injuriesTop[,2], decreasing = T)
+```
+
+Step 4: Across the United States, which types of events have the greatest economic consequences?
+
+Storm data on property and crop damage need to be adjusted since the column value does not show real amount.  It is reflected with K for thousands, M for Million and B for billions. 
+
+```{r,}
+propDamage <- aggregate(stormDF[, 'PROPDMG'],FUN = sum,by = list(stormDF$EVTYPE))
+names(propDamage)[1]<-paste("PropertyDamageType")
+names(propDamage)[2]<-paste("Amount")
+propDamageTop <- subset(propDamage, Amount > 0)
+propDamageTop <- arrange(propDamageTop, propDamageTop[,2], decreasing = T)
+
+cropDamage <- aggregate(stormDF[, 'CROPDMG'],FUN = sum,by = list(stormDF$EVTYPE))
+names(cropDamage)[1]<-paste("CropDamageType")
+names(cropDamage)[2]<-paste("Amount")
+cropDamageTop <- subset(cropDamage, Amount > 0)
+cropDamageTop <- arrange(cropDamageTop, cropDamageTop[,2], decreasing = T)
+```
+
+### Results
+
+The most harmful fatalies are Tornado and Excessive Heat. 
+
+```{r,}
+head(fatalitiesTop,10)
+
+qplot(Fatalities, data = head(fatalitiesTop,10), weight = Frequency, geom = "bar", binwidth = 1) + 
+    ggtitle("Top 10 Fatalities by Severe Weather in the U.S. from 1950 - 2011") + 
+    xlab("Weather Type") +
+    theme(axis.text.x = element_text(angle = 60, hjust = 1)) + 
+    scale_y_continuous("Frequency") 
+```
+
+The most harmful injuries are Tornado and TSTM Wind. It is worth noting that Tornado fequency are more than 10 times TSTM Winds's
+
+```{r,}
+head(injuriesTop,10)
+
+qplot(Injuries, data = head(injuriesTop,10), weight = Frequency, geom = "bar", binwidth = 1) + 
+    ggtitle("Top 10 Injuries by Severe Weather in the U.S. from 1950 - 2011") + 
+    xlab("Weather Type") +
+    theme(axis.text.x = element_text(angle = 60, hjust = 1)) + 
+    scale_y_continuous("Frequency") 
+```
+
+The most property damaging are Tornado and Flash Flood. 
+
+```{r,}
+head(propDamageTop,10)
+
+qplot(PropertyDamageType, data = head(propDamageTop,10), weight = Amount, geom = "bar", binwidth = 1) + 
+    ggtitle("Top 10 Property Damaage by Severe Weather in the U.S. from 1950 - 2011") + 
+    xlab("Weather Type") +
+    theme(axis.text.x = element_text(angle = 60, hjust = 1)) + 
+    scale_y_continuous("Amount") 
+```
+
+The most crop damaging are Hail and Flash Flood. 
+
+```{r,}
+head(cropDamageTop,10)
+
+qplot(CropDamageType, data = head(cropDamageTop,10), weight = Amount, geom = "bar", binwidth = 1) + 
+    ggtitle("Top 10 Crop Damaage by Severe Weather in the U.S. from 1950 - 2011") + 
+    xlab("Weather Type") +
+    theme(axis.text.x = element_text(angle = 60, hjust = 1)) + 
+    scale_y_continuous("Amount") 
+```
